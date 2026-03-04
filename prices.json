@@ -1,0 +1,73 @@
+{
+  "updated": "2026-03-04 09:20:32",
+  "date": "2026-03-04",
+  "prices": {
+    "g95": {
+      "PTT": 30.55,
+      "Shell": 49.84,
+      "Caltex": 30.55,
+      "BCP": 30.55,
+      "PT": 30.55,
+      "Susco": 30.55
+    },
+    "g91": {
+      "PTT": 30.18,
+      "Shell": 31.28,
+      "Caltex": 27.09,
+      "BCP": 30.18,
+      "PT": 27.09,
+      "Susco": 30.18
+    },
+    "e20": {
+      "PTT": 28.34,
+      "Shell": 29.44,
+      "Caltex": 28.34,
+      "BCP": 28.34,
+      "PT": 28.34,
+      "Susco": 28.34
+    },
+    "e85": {
+      "PTT": 26.29,
+      "BCP": 26.29
+    },
+    "benzene95": {
+      "PTT": 39.14,
+      "Caltex": 30.18,
+      "PT": 30.18,
+      "Susco": 39.29
+    },
+    "ngv": {
+      "PTT": 16.62,
+      "Susco": 19.59
+    },
+    "diesel_b7": {
+      "PTT": 29.94,
+      "Shell": 29.94,
+      "Caltex": 49.51,
+      "BCP": 29.94,
+      "PT": 39.64,
+      "Susco": 29.94
+    },
+    "diesel": {},
+    "diesel_premium": {
+      "PTT": 43.44,
+      "Shell": 49.84,
+      "Caltex": 29.94,
+      "BCP": 45.64
+    },
+    "g95_premium": {
+      "PTT": 40.04,
+      "Shell": 49.84,
+      "BCP": 49.54
+    },
+    "g97_premium": {
+      "BCP": 49.54
+    },
+    "super_power_g95": {
+      "PTT": 30.44
+    },
+    "shell_v_g95": {},
+    "shell_v_diesel": {},
+    "shell_fuelsave": {}
+  }
+}
