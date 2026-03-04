@@ -146,11 +146,27 @@ def fetch_from_thai_oil_api() -> dict | None:
         r.raise_for_status()
         data = r.json()
 
-        raw_items  = data.get("result", {}).get("price", [])
-        raw_names  = [i.get("name","") for i in raw_items]
-        raw_brands = list(raw_items[0].get("price",{}).keys()) if raw_items else []
+        # Log โครงสร้างจริงของ API
+        log.info(f"  [API] top-level keys: {list(data.keys())}")
+        log.info(f"  [API] raw response (500 chars): {str(data)[:500]}")
 
-        # ← debug log: จะเห็นใน GitHub Actions
+        # รองรับหลายโครงสร้าง
+        result = data.get("result") or data.get("data") or data
+        if isinstance(result, dict):
+            raw_items = (result.get("price") or result.get("prices") or
+                         result.get("oils") or result.get("items") or [])
+        elif isinstance(result, list):
+            raw_items = result
+        else:
+            raw_items = []
+
+        log.info(f"  [API] raw_items count: {len(raw_items) if isinstance(raw_items, list) else type(raw_items)}")
+        if raw_items and isinstance(raw_items, list):
+            log.info(f"  [API] first item: {str(raw_items[0])[:300]}")
+
+        raw_names  = [i.get("name","") for i in raw_items] if isinstance(raw_items, list) else []
+        raw_brands = list(raw_items[0].get("price",{}).keys()) if (raw_items and isinstance(raw_items, list)) else []
+
         log.info(f"  [API] ชื่อน้ำมัน ({len(raw_names)}): {raw_names}")
         log.info(f"  [API] ชื่อแบรนด์: {raw_brands}")
 
