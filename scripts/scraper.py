@@ -1,4 +1,3 @@
-
 """
 Thai Oil Price Scraper
 ======================
@@ -197,6 +196,11 @@ def fetch_from_thai_oil_api() -> dict | None:
             return None
 
         log.info(f"  [API] station keys: {list(stations.keys())}")
+        # Dump ข้อมูลดิบทุก brand ทุก oil เพื่อ debug
+        for bk, od in stations.items():
+            if isinstance(od, dict):
+                for ok, oval in od.items():
+                    log.info(f"  [RAW] {bk} / {ok} = {oval}")
 
         prices = {}
         for brand_key, oil_dict in stations.items():
