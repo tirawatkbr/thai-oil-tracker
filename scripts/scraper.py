@@ -226,108 +226,93 @@ def fetch_bcp() -> dict:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SOURCE C: Shell Official HTML
-# URL  : shell.co.th/th_th/motorists/shell-fuels/fuel-price/app-fuel-prices.html
-# โครงสร้าง: ตาราง HTML ชื่อน้ำมัน + ราคา
-# ชื่อน้ำมัน Shell: เชลล์ ฟิวเซฟ แก๊สโซฮอล์ 95, เชลล์ วี-เพาเวอร์ 95,
-#                  เชลล์ ฟิวเซฟ แก๊สโซฮอล์ 91, เชลล์ ฟิวเซฟ E20,
-#                  เชลล์ ฟิวเซฟ ดีเซล, เชลล์ วี-เพาเวอร์ ดีเซล
+# SOURCE C: Shell Official — Playwright (Shadow DOM)
+# URL    : shell.co.th/th_th/customer/fuels-and-lubricants/fuels/fuel-price.html
+# ราคาอยู่ใน Shadow DOM ของ custom element <standalone-table>
+# BeautifulSoup/requests เข้าไม่ถึง — ต้องใช้ Playwright render JS ก่อน
+#
+# โครงสร้าง Shadow DOM:
+#   <standalone-table>
+#     #shadow-root
+#       <table>
+#         <tr><td>เชลล์ ฟิวเซฟ แก๊สโซฮอล์ E20</td><td>29.44</td></tr>
+#         ...
+#
+# ชื่อน้ำมัน Shell:
+#   เชลล์ ฟิวเซฟ แก๊สโซฮอล์ E20, เชลล์ ฟิวเซฟ แก๊สโซฮอล์ 91,
+#   เชลล์ ฟิวเซฟ แก๊สโซฮอล์ 95, เชลล์ วี-เพาเวอร์ แก๊สโซฮอล์ 95,
+#   เชลล์ ฟิวเซฟ ดีเซล, เชลล์ วี-เพาเวอร์ ดีเซล
 # ══════════════════════════════════════════════════════════════════════════════
-_SHELL_URLS = [
-    "https://www.shell.co.th/th_th/motorists/shell-fuels/fuel-price/app-fuel-prices.html",
-    "https://www.shell.co.th/en_th/motorists/shell-fuels/fuel-price/app-fuel-prices.html",
-]
+_SHELL_URL = "https://www.shell.co.th/th_th/customer/fuels-and-lubricants/fuels/fuel-price.html"
+
+_SHELL_JS = """
+() => {
+    const el = document.querySelector('standalone-table');
+    if (!el || !el.shadowRoot) return [];
+    const rows = el.shadowRoot.querySelectorAll('tr');
+    const data = [];
+    rows.forEach(row => {
+        const tds = row.querySelectorAll('td');
+        if (tds.length >= 2) {
+            const name = tds[0].innerText.trim().replace(/:$/, '').trim();
+            const price = tds[1].innerText.trim();
+            if (name && price) data.push({name, price});
+        }
+    });
+    return data;
+}
+"""
 
 def fetch_shell() -> dict:
-    log.info("  [Shell] Official HTML scrape...")
-    for url in _SHELL_URLS:
-        try:
-            r = requests.get(url, headers=HEADERS, timeout=20)
-            if r.status_code == 403 or r.status_code == 404:
-                continue
-            r.raise_for_status()
-            r.encoding = "utf-8"
-            soup = BeautifulSoup(r.text, "html.parser")
-            oils = _parse_shell_html(soup)
-            if oils:
-                log.info(f"  ✅ Shell HTML ({url.split('/')[2]}): {len(oils)} รายการ")
-                return oils
-        except Exception as e:
-            log.debug(f"    Shell URL ล้มเหลว ({url}): {e}")
-            continue
-
-    log.warning("  ⚠️  Shell HTML ล้มเหลวทุก URL — จะใช้ข้อมูลจาก Kapook")
-    return {}
-
-def _parse_shell_html(soup: BeautifulSoup) -> dict:
-    """
-    Parse Shell Thailand fuel price page.
-    รองรับหลาย layout:
-    - ตาราง <table> row: [ชื่อน้ำมัน, ราคา]
-    - <li> หรือ <div> ที่มีชื่อและราคา
-    """
-    oils: dict = {}
-
-    # Layout 1: ตาราง <table>
-    for table in soup.find_all("table"):
-        for row in table.find_all("tr"):
-            cells = row.find_all(["td", "th"])
-            if len(cells) >= 2:
-                name = cells[0].get_text(strip=True)
-                price_text = cells[-1].get_text(strip=True)
-                _try_add_oil(oils, name, price_text)
-
-    if oils:
-        return oils
-
-    # Layout 2: <li> pattern "ชื่อน้ำมัน xxx.xx บาท"
-    for li in soup.find_all("li"):
-        text = li.get_text(" ", strip=True)
-        m = re.search(r"([\u0E00-\u0E7F\s\w\-\.]+?)\s+(\d{2,3}\.\d{2})", text)
-        if m:
-            _try_add_oil(oils, m.group(1).strip(), m.group(2))
-
-    if oils:
-        return oils
-
-    # Layout 3: ค้นหา price pattern ทั้งหน้า
-    # หาคู่ชื่อ-ราคา ที่อยู่ใน element เดียวกันหรือ sibling
-    for el in soup.find_all(string=re.compile(r"\d{2,3}\.\d{2}")):
-        price_text = el.strip()
-        m = re.search(r"(\d{2,3}\.\d{2})", price_text)
-        if not m:
-            continue
-        # หาชื่อน้ำมันจาก sibling หรือ parent
-        parent = el.parent
-        if parent:
-            prev = parent.find_previous_sibling()
-            if prev:
-                name = prev.get_text(strip=True)
-                _try_add_oil(oils, name, m.group(1))
-
-    return oils
-
-def _try_add_oil(oils: dict, name: str, price_text: str):
-    """ลองเพิ่ม oil entry ถ้า name เป็นภาษาไทย/น้ำมัน และ price valid"""
-    if not name or len(name) < 3:
-        return
-    # ต้องมีตัวอักษรไทยหรือคำว่า gasohol/diesel/shell
-    if not re.search(r"[\u0E00-\u0E7F]|gasohol|diesel|shell|e20|e85|ngv", name, re.I):
-        return
-    m = re.search(r"(\d{2,3}\.\d{2})", price_text.replace(",", ""))
-    if not m:
-        return
+    log.info("  [Shell] Playwright (Shadow DOM)...")
     try:
-        price = float(m.group(1))
-    except ValueError:
-        return
-    if price <= 0 or price > 200:
-        return
-    family, order = get_family(name)
-    key = slugify(name)
-    if key and key not in oils:
-        oils[key] = {"name": name, "price": price, "family": family, "order": order}
-        log.info(f"    ✓ Shell | {name:38} {price:6.2f} [{family}]")
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        log.warning("  ⚠️  playwright ไม่ได้ติดตั้ง — ข้าม Shell (จะใช้ Kapook)")
+        return {}
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page(
+                user_agent=HEADERS["User-Agent"],
+                extra_http_headers={"Accept-Language": "th-TH,th;q=0.9"}
+            )
+            page.goto(_SHELL_URL, wait_until="networkidle", timeout=30000)
+            # รอ shadow DOM โหลด
+            page.wait_for_selector("standalone-table", timeout=15000)
+            raw = page.evaluate(_SHELL_JS)
+            browser.close()
+
+        if not raw:
+            log.warning("  ⚠️  Shell Shadow DOM ว่าง — จะใช้ Kapook")
+            return {}
+
+        oils: dict = {}
+        for item in raw:
+            name = item["name"]
+            price_text = item["price"]
+            m = re.search(r"(\d{2,3}\.\d{2})", price_text)
+            if not m:
+                continue
+            try:
+                price = float(m.group(1))
+            except ValueError:
+                continue
+            if price <= 0 or price > 200:
+                continue
+            family, order = get_family(name)
+            key = slugify(name)
+            if key and key not in oils:
+                oils[key] = {"name": name, "price": price, "family": family, "order": order}
+                log.info(f"    ✓ Shell | {name:38} {price:6.2f} [{family}]")
+
+        log.info(f"  {'✅' if oils else '⚠️ '} Shell Playwright: {len(oils)} รายการ")
+        return oils
+
+    except Exception as e:
+        log.warning(f"  ⚠️  Shell Playwright ล้มเหลว: {e} — จะใช้ Kapook")
+        return {}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
