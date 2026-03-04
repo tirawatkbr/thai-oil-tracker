@@ -42,6 +42,7 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           pip install -r requirements.txt
+          playwright install chromium --with-deps
 
       # ── 4. Run scraper ─────────────────────────────────────────────────
       - name: 🔍 Scrape oil prices
